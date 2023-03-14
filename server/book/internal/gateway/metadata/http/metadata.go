@@ -4,24 +4,34 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"math/rand"
 	"net/http"
 
 	"github.com/basebandit/bookshop/server/book/internal/gateway"
 	"github.com/basebandit/bookshop/server/metadata/pkg/model"
+	"github.com/basebandit/bookshop/server/pkg/discovery"
 )
 
 // Gateway defines a book metadata HTTP gateway.
 type Gateway struct {
-	addr string
+	registry discovery.Registry
 }
 
 // New creates a new HTTP gateway for a book metadata service.
-func New(addr string) *Gateway {
-	return &Gateway{addr}
+func New(registry discovery.Registry) *Gateway {
+	return &Gateway{registry}
 }
 
+// Get gets a book metadata matching the given book id.
 func (g *Gateway) Get(ctx context.Context, id string) (*model.Metadata, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%v/metadata", g.addr), nil)
+	addrs, err := g.registry.ServiceAddresses(ctx, "metadata")
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("http://%s/metadata", addrs[rand.Intn(len(addrs))])
+	log.Printf("calling metadata service. Request: GET %v\n", url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
