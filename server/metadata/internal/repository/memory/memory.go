@@ -22,7 +22,7 @@ func New() *Repository {
 // Get retrieves book metadata by book id.
 func (r *Repository) Get(_ context.Context, id string) (*model.Metadata, error) {
 	r.RLock()
-	defer r.Unlock()
+	defer r.RUnlock()
 
 	m, ok := r.data[id]
 	if !ok {
