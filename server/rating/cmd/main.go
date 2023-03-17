@@ -5,14 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
+	"net"
 	"time"
 
+	"github.com/basebandit/bookshop/server/gen"
 	"github.com/basebandit/bookshop/server/pkg/discovery"
 	"github.com/basebandit/bookshop/server/pkg/discovery/consul"
 	"github.com/basebandit/bookshop/server/rating/internal/controller/rating"
-	httphandler "github.com/basebandit/bookshop/server/rating/internal/handler/http"
+	grpchandler "github.com/basebandit/bookshop/server/rating/internal/handler/grpc"
 	"github.com/basebandit/bookshop/server/rating/internal/repository/memory"
+	"google.golang.org/grpc"
 )
 
 const serviceName = "rating"
@@ -45,10 +47,15 @@ func main() {
 		}
 	}()
 	repo := memory.New()
-	svc := rating.New(repo)
-	h := httphandler.New(svc)
-	http.Handle("/rating", http.HandlerFunc(h.Handle))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	ctrl := rating.New(repo)
+	h := grpchandler.New(ctrl)
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	srv := grpc.NewServer()
+	gen.RegisterRatingServer(srv, h)
+	if err := srv.Serve(lis); err != nil {
 		panic(err)
 	}
 }
