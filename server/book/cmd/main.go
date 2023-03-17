@@ -5,15 +5,18 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
+	"net"
 	"time"
 
 	"github.com/basebandit/bookshop/server/book/internal/controller/book"
 	metadatagateway "github.com/basebandit/bookshop/server/book/internal/gateway/metadata/http"
 	ratinggateway "github.com/basebandit/bookshop/server/book/internal/gateway/rating/http"
-	httphandler "github.com/basebandit/bookshop/server/book/internal/handler/http"
+	grpchandler "github.com/basebandit/bookshop/server/book/internal/handler/grpc"
+	"github.com/basebandit/bookshop/server/gen"
 	"github.com/basebandit/bookshop/server/pkg/discovery"
-	"github.com/basebandit/bookshop/server/pkg/discovery/consul"
+	"github.com/basebandit/bookshop/server/pkg/discovery/consul" // Copyright  Canonical Ltd.
+	"google.golang.org/grpc"
+	// Licensed under the AGPLv3, see LICENCE file for details.
 )
 
 const serviceName = "book"
@@ -45,12 +48,17 @@ func main() {
 			panic(err)
 		}
 	}()
-	metdataGateway := metadatagateway.New(registry)
+	metadataGateway := metadatagateway.New(registry)
 	ratingGateway := ratinggateway.New(registry)
-	svc := book.New(ratingGateway, metdataGateway)
-	h := httphandler.New(svc)
-	http.Handle("/book", http.HandlerFunc(h.GetBook))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	ctrl := book.New(ratingGateway, metadataGateway)
+	h := grpchandler.New(ctrl)
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v\n", err)
+	}
+	srv := grpc.NewServer()
+	gen.RegisterBookServer(srv, h)
+	if err := srv.Serve(lis); err != nil {
 		panic(err)
 	}
 }
