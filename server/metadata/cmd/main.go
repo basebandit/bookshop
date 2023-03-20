@@ -5,14 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
+	"net"
 	"time"
 
+	"github.com/basebandit/bookshop/server/gen"
 	"github.com/basebandit/bookshop/server/metadata/internal/controller/metadata"
-	httphandler "github.com/basebandit/bookshop/server/metadata/internal/handler/http"
+	grpchandler "github.com/basebandit/bookshop/server/metadata/internal/handler/grpc"
 	"github.com/basebandit/bookshop/server/metadata/internal/repository/memory"
 	"github.com/basebandit/bookshop/server/pkg/discovery"
 	"github.com/basebandit/bookshop/server/pkg/discovery/consul"
+	"google.golang.org/grpc"
 )
 
 const serviceName = "metadata"
@@ -45,10 +47,15 @@ func main() {
 		}
 	}()
 	repo := memory.New()
-	svc := metadata.New(repo)
-	h := httphandler.New(svc)
-	http.Handle("/metadata", http.HandlerFunc(h.GetMetadata))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	ctrl := metadata.New(repo)
+	h := grpchandler.New(ctrl)
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	srv := grpc.NewServer()
+	gen.RegisterMetadataServiceServer(srv, h)
+	if err := srv.Serve(lis); err != nil {
 		panic(err)
 	}
 }
