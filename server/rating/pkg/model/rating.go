@@ -4,7 +4,7 @@ package model
 // across all types.
 type RecordID string
 
-// RecordType defines a record type. Togethe with RecordID identifies unique records
+// RecordType defines a record type. Together with RecordID identifies unique records
 // across all types.
 type RecordType string
 
@@ -24,3 +24,21 @@ type Rating struct {
 	UserID     UserID      `json:"userId"`
 	Value      RatingValue `json:"value"`
 }
+
+// RatingEvent defines an event containing rating information.
+type RatingEvent struct {
+	UserID     UserID          `json:"userId"`
+	RecordID   string          `json:"recordID"`
+	RecordType string          `json:"recordType"`
+	Value      RatingValue     `json:"value"`
+	EventType  RatingEventType `json:"eventType"`
+}
+
+// RatingEventType defines the type of a rating event.
+type RatingEventType string
+
+// Rating event types.
+const (
+	RatingEventTypeAdd    = "add"
+	RatingEventTypeDelete = "delete"
+)
